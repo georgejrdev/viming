@@ -1,0 +1,16 @@
+node_modules
+dist
+.angular
+coverage
+test-results
+playwright-report
+
+# Pre-approved documents: keep their authored line breaks.
+docs/spec
+
+# External instructions.
+.ai-instructions
+
+# Generated or vendor-like files.
+package-lock.json
+LICENSE
