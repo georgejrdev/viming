@@ -1,0 +1,343 @@
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">V</span>
+    <div class="brand-copy">
+      <h1>{{ i18n.t('app.title') }}</h1>
+      <p>{{ i18n.t('app.tagline') }}</p>
+    </div>
+  </div>
+
+  <div class="topbar-actions">
+    <div class="lang-switch" role="group" [attr.aria-label]="i18n.t('header.language')">
+      <button
+        type="button"
+        [class.active]="i18n.lang() === 'en'"
+        [attr.aria-pressed]="i18n.lang() === 'en'"
+        (click)="setLanguage('en')"
+      >
+        EN
+      </button>
+      <button
+        type="button"
+        [class.active]="i18n.lang() === 'pt-BR'"
+        [attr.aria-pressed]="i18n.lang() === 'pt-BR'"
+        (click)="setLanguage('pt-BR')"
+      >
+        PT-BR
+      </button>
+    </div>
+    <button
+      class="ghost"
+      type="button"
+      aria-haspopup="dialog"
+      [attr.aria-label]="i18n.t('header.statsOpen')"
+      (click)="openStats()"
+    >
+      {{ i18n.t('header.stats') }}
+    </button>
+    <button class="ghost" type="button" (click)="resetData()">
+      {{ i18n.t('header.reset') }}
+    </button>
+  </div>
+</header>
+
+@if (toast()) {
+  <div class="toast" role="status">{{ toast() }}</div>
+}
+
+@if (!storageAvailable()) {
+  <p class="storage-warning">{{ i18n.t('common.storageUnavailable') }}</p>
+}
+
+<main class="layout">
+  <aside class="sidebar" [attr.aria-label]="i18n.t('nav.groups')">
+    <button class="random" type="button" (click)="random()">
+      <span aria-hidden="true">⤨</span>
+      {{ i18n.t('nav.random') }}
+    </button>
+
+    <h2>{{ i18n.t('nav.groups') }}</h2>
+
+    @for (group of groups(); track group.id) {
+      <section class="group" [class.active]="current()?.group === group.id">
+        <button
+          class="group-head"
+          type="button"
+          [attr.aria-expanded]="current()?.group === group.id"
+          (click)="selectGroup(group.id)"
+        >
+          <span class="group-letter" aria-hidden="true">{{ group.id }}</span>
+          <span class="group-copy">
+            <span class="group-name">{{ group.name }}</span>
+            <span class="group-desc">{{ group.description }}</span>
+          </span>
+          <span class="group-progress">{{ group.done }}/{{ group.total }}</span>
+        </button>
+
+        @if (current()?.group === group.id) {
+          <ul class="challenge-list">
+            @for (challenge of currentGroupChallenges(); track challenge.id) {
+              <li>
+                <button
+                  type="button"
+                  [class.current]="current()?.id === challenge.id"
+                  [class.done]="isCompleted(challenge)"
+                  (click)="selectChallenge(challenge)"
+                >
+                  <span class="check" aria-hidden="true">{{
+                    isCompleted(challenge) ? '✓' : '·'
+                  }}</span>
+                  <span class="challenge-name">{{ challengeTitle(challenge) }}</span>
+                  <span class="dots" aria-hidden="true">{{
+                    difficultyDots(challenge.difficulty)
+                  }}</span>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  </aside>
+
+  <section class="stage">
+    @if (current(); as challenge) {
+      <article class="panel task-panel">
+        <div class="panel-head">
+          <div>
+            <span class="eyebrow">
+              {{ i18n.t('common.group') }} {{ challenge.group }} ·
+              {{ i18n.t('common.challenge') }}
+            </span>
+            <h2>{{ challengeTitle(challenge) }}</h2>
+          </div>
+          <div class="badges">
+            <span class="badge command">
+              {{ i18n.t('task.command') }}: {{ challenge.targetCommand }}
+            </span>
+            <span class="badge">{{ i18n.t('task.par') }}: {{ parLabel(challenge) }}</span>
+          </div>
+        </div>
+
+        <p class="task-copy">{{ i18n.t(challenge.taskKey) }}</p>
+
+        @if (challenge.hintKey) {
+          <button class="link" type="button" (click)="toggleHint()">
+            {{ showHint() ? i18n.t('task.hideHint') : i18n.t('task.showHint') }}
+          </button>
+          @if (showHint()) {
+            <p class="hint">{{ i18n.t(challenge.hintKey) }}</p>
+          }
+        }
+
+        <div class="goal" [class.success]="completed()" [class.attention]="modeWarning()">
+          <div class="goal-head">
+            <span>{{ i18n.t('task.goal') }}</span>
+            @if (targetCursor(); as cursor) {
+              <span class="goal-cursor"> line {{ cursor.line + 1 }}, col {{ cursor.ch + 1 }} </span>
+            }
+          </div>
+          @if (targetText() !== null) {
+            @if (goalPreview(); as goal) {
+              <pre
+                class="goal-text"
+              ><span>{{ goal.before }}</span><span class="goal-caret" aria-hidden="true"></span><span>{{ goal.after }}</span></pre>
+            }
+          }
+          <p class="goal-help">
+            @if (completed()) {
+              <span class="goal-mark" aria-hidden="true">✓</span>
+              {{ i18n.t('task.goalDone') }}
+            } @else if (modeWarning()) {
+              {{ i18n.t('result.notNormal') }}
+            } @else if (targetText() !== null) {
+              {{ i18n.t('task.goalHint') }}
+            } @else {
+              {{ i18n.t('task.noGoal') }}
+            }
+          </p>
+        </div>
+      </article>
+
+      <nav class="stage-nav" [attr.aria-label]="i18n.t('common.challenge')">
+        <button
+          type="button"
+          [disabled]="!neighbours().previous"
+          aria-keyshortcuts="Alt+ArrowLeft"
+          (click)="previous()"
+        >
+          <span>{{ i18n.t('nav.prev') }}</span>
+          <kbd class="nav-key">Alt+←</kbd>
+        </button>
+        <button type="button" aria-keyshortcuts="Alt+R" (click)="restart()">
+          <span>{{ i18n.t('nav.restart') }}</span>
+          <kbd class="nav-key">Alt+R</kbd>
+        </button>
+        <button
+          type="button"
+          [disabled]="!neighbours().next"
+          aria-keyshortcuts="Alt+ArrowRight"
+          (click)="next()"
+        >
+          <span>{{ i18n.t('nav.next') }}</span>
+          <kbd class="nav-key">Alt+→</kbd>
+        </button>
+      </nav>
+
+      <div class="editor-shell">
+        <app-editor
+          [initial]="challenge.initial"
+          [resetToken]="resetToken()"
+          [label]="i18n.t('editor.label')"
+          (stateChange)="onStateChange($event)"
+        />
+      </div>
+      <p class="editor-help">{{ i18n.t('editor.help') }}</p>
+
+      <article class="panel result-panel" [class.success]="completed()">
+        <div class="panel-head">
+          <h2>{{ i18n.t('result.title') }}</h2>
+          @if (completed()) {
+            <span class="pass-badge">{{ i18n.t('result.pass') }}</span>
+          }
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <span>{{ i18n.t('result.keystrokes') }}</span>
+            <strong>{{ liveKeystrokes() }}</strong>
+          </div>
+          <div class="stat">
+            <span>{{ i18n.t('result.time') }}</span>
+            <strong>{{ liveSeconds() }}s</strong>
+          </div>
+          <div class="stat">
+            <span>{{ i18n.t('result.par') }}</span>
+            <strong>{{ challenge.par.keystrokes }} / {{ challenge.par.seconds }}s</strong>
+          </div>
+
+          @if (outcome(); as result) {
+            <div class="stat" [class.good]="result.comparison.keystrokesDelta <= 0">
+              <span>{{ i18n.t('result.keystrokesDelta') }}</span>
+              <strong>{{ keystrokeDelta(result.comparison.keystrokesDelta) }}</strong>
+            </div>
+            <div class="stat" [class.good]="result.comparison.secondsDelta <= 0">
+              <span>{{ i18n.t('result.timeDelta') }}</span>
+              <strong>{{ secondDelta(result.comparison.secondsDelta) }}s</strong>
+            </div>
+            <div class="stat">
+              <span>{{ i18n.t('result.best') }}</span>
+              <strong>{{ bestLabel(result.best) }}</strong>
+            </div>
+            <div class="stat">
+              <span>{{ i18n.t('result.attempts') }}</span>
+              <strong>{{ result.best.attempts }}</strong>
+            </div>
+          }
+        </div>
+
+        <p class="announcement" aria-live="polite">{{ announcement() }}</p>
+        @if (modeWarning()) {
+          <p class="warning">{{ i18n.t('result.notNormal') }}</p>
+        }
+      </article>
+    }
+  </section>
+</main>
+
+@if (statsOpen()) {
+  <div class="stats-backdrop">
+    <section class="stats-dialog" role="dialog" aria-modal="true" aria-labelledby="stats-title">
+      <header class="stats-head">
+        <div>
+          <span class="eyebrow">{{ i18n.t('stats.eyebrow') }}</span>
+          <h2 id="stats-title">{{ i18n.t('stats.title') }}</h2>
+        </div>
+        <button
+          #statsClose
+          class="stats-close"
+          type="button"
+          [attr.aria-label]="i18n.t('stats.close')"
+          (click)="closeStats()"
+        >
+          ✕
+        </button>
+      </header>
+
+      @if (stats(); as s) {
+        <div class="stats-overview">
+          <div class="overview-numbers">
+            <strong>{{ s.percent }}%</strong>
+            <span>{{ i18n.t('stats.progress', { done: s.completed, total: s.total }) }}</span>
+          </div>
+          <div
+            class="overview-bar"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            [attr.aria-valuenow]="s.percent"
+          >
+            <span [style.width.%]="s.percent"></span>
+          </div>
+        </div>
+
+        @if (s.completed === 0) {
+          <p class="stats-empty">{{ i18n.t('stats.empty') }}</p>
+        }
+
+        <div class="stats-grid">
+          <div class="stats-card">
+            <span>{{ i18n.t('stats.completed') }}</span>
+            <strong>{{ s.completed }}/{{ s.total }}</strong>
+          </div>
+          <div class="stats-card">
+            <span>{{ i18n.t('stats.attempts') }}</span>
+            <strong>{{ s.attempts }}</strong>
+          </div>
+          <div class="stats-card">
+            <span>{{ i18n.t('stats.averageKeystrokes') }}</span>
+            <strong>{{ averageKeysLabel(s) }}</strong>
+          </div>
+          <div class="stats-card">
+            <span>{{ i18n.t('stats.averageSeconds') }}</span>
+            <strong>{{ averageSecondsLabel(s) }}</strong>
+          </div>
+        </div>
+
+        <div class="stats-highlights">
+          <div class="stats-highlight">
+            <span>{{ i18n.t('stats.fastest') }}</span>
+            @if (s.fastest; as fastest) {
+              <strong>{{ secondsLabel(fastest.value) }} · {{ fastest.command }}</strong>
+            } @else {
+              <strong>—</strong>
+            }
+          </div>
+          <div class="stats-highlight">
+            <span>{{ i18n.t('stats.fewestKeys') }}</span>
+            @if (s.fewestKeys; as leanest) {
+              <strong>{{ keysLabel(leanest.value) }} · {{ leanest.command }}</strong>
+            } @else {
+              <strong>—</strong>
+            }
+          </div>
+        </div>
+
+        <h3>{{ i18n.t('stats.byGroup') }}</h3>
+        <ul class="group-stats">
+          @for (group of s.groups; track group.group) {
+            <li>
+              <span class="group-stats-letter" aria-hidden="true">{{ group.group }}</span>
+              <span class="group-stats-name">{{ i18n.t('nav.group.' + group.group) }}</span>
+              <span class="group-stats-count">{{ group.done }}/{{ group.total }}</span>
+              <span class="group-stats-bar" aria-hidden="true">
+                <span [style.width.%]="group.percent"></span>
+              </span>
+              <span class="group-stats-percent">{{ group.percent }}%</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+}
