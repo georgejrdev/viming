@@ -1,0 +1,61 @@
+import { buildGroup } from './define.js';
+
+const rows = [
+  {
+    command: ':s',
+    title: 'ex-s',
+    text: 'foo bar foo',
+    cursor: [0, 0],
+    targetText: 'baz bar foo',
+    targetCursor: [0, 0],
+    par: 12,
+    seconds: 20,
+    difficulty: 3,
+  },
+  {
+    command: ':%s',
+    title: 'ex-percent-s',
+    text: 'foo\nfoo',
+    cursor: [0, 0],
+    targetText: 'baz\nbaz',
+    targetCursor: [0, 0],
+    par: 14,
+    seconds: 25,
+    difficulty: 3,
+  },
+  {
+    command: ':m',
+    title: 'ex-m',
+    text: 'one\ntwo\nthree',
+    cursor: [0, 0],
+    targetText: 'two\none\nthree',
+    targetCursor: [1, 0],
+    par: 5,
+    seconds: 12,
+    difficulty: 3,
+  },
+  {
+    command: ':t',
+    title: 'ex-t',
+    text: 'one\ntwo',
+    cursor: [0, 0],
+    targetText: 'one\ntwo\none',
+    targetCursor: [2, 0],
+    par: 4,
+    seconds: 12,
+    difficulty: 3,
+  },
+  {
+    command: ':normal',
+    title: 'ex-normal',
+    text: 'one\ntwo\nthree',
+    cursor: [0, 0],
+    targetText: 'two\nthree',
+    targetCursor: [0, 0],
+    par: 11,
+    seconds: 20,
+    difficulty: 4,
+  },
+];
+
+export const groupFChallenges = buildGroup('F', rows);
